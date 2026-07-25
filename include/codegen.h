@@ -3,6 +3,6 @@
 
 #include "parser.h"
 
-void generate_assembly(AST asr, char *out_path);
+void generate_assembly(AST ast, const char *out_path);
 
 #endif //CODEGEN_H

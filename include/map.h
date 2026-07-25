@@ -14,6 +14,8 @@ struct Map {
 
 Map *create_map(size_t capacity, size_t entry_size);
 
+void free_map(Map *map);
+
 void hash(Map *map, const char *key, void *value);
 
 void *find(Map *map, const char *key);

@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../include/tokenizer.h"
-#include "../include/parser.h"
-#include "../include/codegen.h"
-#include "../include/map.h"
+#include "include/tokenizer.h"
+#include "include/parser.h"
+#include "include/codegen.h"
+#include "include/map.h"
 
 
+#include "include/map.h"
+#include "include/z_string.h"
 
 int main(int argc, char **argv) {
     if (argc < 3) {

@@ -1,5 +1,6 @@
 #include "../include/codegen.h"
 
+#include <error.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -14,7 +15,7 @@ int alloc_reg() {
             return i;
         }
     }
-    exit(1);
+    sys_error("Ran out of registers");
 }
 
 void free_reg(int i) {
@@ -54,7 +55,7 @@ int gen_code(Node *first_node, int idx, FILE *file) {
     return left_reg;
 }
 
-void generate_assembly(AST ast, char *out_path) {
+void generate_assembly(AST ast, const char *out_path) {
     FILE *out_file = fopen(out_path, "w");
     if (out_file == NULL) printf("Error: Can't open output file.");
 
@@ -66,4 +67,6 @@ void generate_assembly(AST ast, char *out_path) {
 
     fprintf(out_file, "mov rax, %s\n", registers[final_reg]);
     fprintf(out_file,"ret\n");
+
+    fclose(out_file);
 }

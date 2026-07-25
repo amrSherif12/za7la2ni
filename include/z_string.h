@@ -2,6 +2,8 @@
 #define STRING_H
 #include <stddef.h>
 
+#define STRING_INIT_CAP 16
+
 typedef struct String String;
 
 struct String {
@@ -11,6 +13,8 @@ struct String {
 };
 
 String *create_str();
+
+void free_str(String *str);
 
 void push_back(String *str, char c);
 

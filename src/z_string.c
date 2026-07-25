@@ -1,22 +1,27 @@
-#include "../include/string.h"
+#include "../include/z_string.h"
 
+#include <error.h>
 #include <stdlib.h>
+#include <utils.h>
 
 String * create_str() {
     String *str = malloc(sizeof(String));
-    str->capacity = 16;
+    str->capacity = STRING_INIT_CAP;
     str->size = 0;
     str->data = malloc(16);
 
     return str;
 }
 
+void free_str(String *str) {
+    free(str->data);
+    free(str);
+}
+
 void push_back(String *str, char c) {
     if (str->size >= str->capacity) {
         str->capacity *= 2;
-        void *new_ptr = realloc(str->data, str->capacity);
-
-        if (new_ptr == NULL) exit(1);
+        void *new_ptr = xrealloc(str->data, str->capacity);
         str->data = new_ptr;
     }
 

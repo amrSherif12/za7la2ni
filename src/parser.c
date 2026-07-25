@@ -1,92 +1,108 @@
 #include "../include/parser.h"
 
+#include <ctype.h>
+#include <error.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <utils.h>
 
 #include "../include/tokenizer.h"
 
-int parse_expr(Token **token);
+typedef struct Parser Parser;
 
-int parse_mul(Token **token);
+struct Parser {
+    Node *nodes;
+    Token **token;
+    size_t cur_idx;
+    char *file_data;
+};
 
-int parse_primary(Token **token);
+int parse_expr(Parser *p);
+
+int parse_mul(Parser *p);
+
+int parse_primary(Parser *p);
 
 NodeType token_to_node(Token *token) {
     switch (token->type) {
-        case UND_TK: return UND_ND;
         case NUM_TK: return NUM_ND;
         case ADD_TK: return ADD_ND;
         case SUB_TK: return SUB_ND;
         case MUL_TK: return MUL_ND;
         case DIV_TK: return DIV_ND;
-        case EOF_TK: return UND_ND;
+        default: return UND_ND;
     }
-    return UND_ND;
 }
 
 int get_num_value(Token *token) {
-    char temp = token->loc[token->len];
-    token->loc[token->len] = '\0';
-    int res = atoi(token->loc);
-    token->loc[token->len] = temp;
+    int i = 0;
+    int res = 0;
+    while (i < token->len && isdigit(token->loc[i])) {
+        res = res * 10 + (token->loc[i] - '0');
+        i++;
+    }
     return res;
 }
 
-static Node *node;
-
-int add_node(Node new_node) {
-    static int cur_idx = 0;
-    *(node + cur_idx) = new_node;
-    return cur_idx++;
+int add_node(Parser *p, Node new_node) {
+    *(p->nodes + p->cur_idx) = new_node;
+    return p->cur_idx++;
 }
 
-int parse_expr(Token **token) {
-    int cur_idx = parse_mul(token);
+int parse_expr(Parser *p) {
+    int cur_idx = parse_mul(p);
 
     while (true) {
-        if ((*token)->type == ADD_TK || (*token)->type == SUB_TK) {
-            Token *op = *token;
-            (*token)++;
-            int right_idx = parse_mul(token);
-            cur_idx = add_node((Node){.type = token_to_node(op), .left = cur_idx, .right = right_idx});
+        if ((*p->token)->type == ADD_TK || (*p->token)->type == SUB_TK) {
+            Token *op = *p->token;
+            (*p->token)++;
+            int right_idx = parse_mul(p);
+            cur_idx = add_node(p, (Node){.type = token_to_node(op), .left = cur_idx, .right = right_idx});
             continue;
         }
         return cur_idx;
     }
 }
 
-int parse_mul(Token **token) {
-    int cur_idx = parse_primary(token);
+int parse_mul(Parser *p) {
+    int cur_idx = parse_primary(p);
 
     while (true) {
-        if ((*token)->type == MUL_TK || (*token)->type == DIV_TK) {
-            Token *op = *token;
-            (*token)++;
-            int right_idx = parse_primary(token);
-            cur_idx = add_node((Node){.type = token_to_node(op), .left = cur_idx, .right = right_idx});
+        if ((*p->token)->type == MUL_TK || (*p->token)->type == DIV_TK) {
+            Token *op = *p->token;
+            (*p->token)++;
+            int right_idx = parse_primary(p);
+            cur_idx = add_node(p, (Node){.type = token_to_node(op), .left = cur_idx, .right = right_idx});
             continue;
         }
         return cur_idx;
     }
 }
 
-int parse_primary(Token **token) {
-    if ((*token)->type != NUM_TK) exit(1);
+int parse_primary(Parser *p) {
+    if ((*p->token)->type != NUM_TK) code_error("Expected a number here.", (*p->token)->loc, p->file_data);
 
-    int cur_idx = add_node((Node){.type = NUM_ND, .value = get_num_value(*token), .left = -1, .right = -1});
-    (*token)++;
+    int cur_idx = add_node(p, (Node){.type = NUM_ND, .value = get_num_value(*p->token), .left = -1, .right = -1});
+    (*p->token)++;
     return cur_idx;
 }
 
 AST parse(Tokens tokens) {
-    Token *token = tokens.tokens;
 
-    if (token->type != NUM_TK) exit(1);
-    node = calloc(tokens.count + 5, sizeof(Node));
-    Node *first_node = node;
+    Parser p = {
+        .nodes = xcalloc(tokens.count + 5, sizeof(Node)),
+        .token = &tokens.tokens,
+        .cur_idx = 0,
+        .file_data = tokens.file_data
+    };
 
-    int root = parse_expr(&token);
+    int root = parse_expr(&p);
 
-    return (AST){first_node, root};
+    // for (int i = 0; i < 9; i++) {
+    //     printf("%d %d %d %d %d\n", i, (node + i)->type, (node + i)->value, (node + i)->left, (node + i)->right);
+    // }
+    // printf("%d", root);
+
+    return (AST){p.nodes, root};
 }

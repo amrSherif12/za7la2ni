@@ -1,20 +1,21 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <stddef.h>
+
 #include "tokenizer.h"
 
 typedef struct Node Node;
 typedef struct AST AST;
-typedef enum NodeType NodeType;
 
-enum NodeType {
-    UND_ND,
+typedef enum NodeType {
     NUM_ND,
     ADD_ND,
     SUB_ND,
     MUL_ND,
     DIV_ND,
-};
+    UND_ND,
+} NodeType;
 
 struct Node {
     NodeType type;
@@ -25,7 +26,7 @@ struct Node {
 
 struct AST {
     Node *nodes;
-    int root_idx;
+    size_t root_idx;
 };
 
 AST parse(Tokens tokens);
