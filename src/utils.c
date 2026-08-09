@@ -1,6 +1,10 @@
 #include <error.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include<utils.h>
+#include <stdarg.h>
+#include <string.h>
+
 
 void *xmalloc(size_t size) {
     void *ptr = malloc(size);

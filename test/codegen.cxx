@@ -12,9 +12,12 @@ int run_code(char *code) {
     out << code;
     out.close();
 
-    Tokens tokens = tokenize(file_input);
-    AST ast = parse(tokens);
-    generate_assembly(ast, file_output);
+    CompilerCtx ctx = init_ctx();
+    Tokens tokens = tokenize(file_input, &ctx);
+    AST ast = parse(tokens, &ctx);
+    free(tokens.tokens);
+    ctx.tokens = nullptr;
+    generate_assembly(ast, file_output, &ctx);
 
     std::system("gcc -z noexecstack -o test_prog test_ass.s");
     int exit_code = std::system("./test_prog");
@@ -27,6 +30,6 @@ int run_code(char *code) {
 }
 
 TEST(Codegen, Arithmetic) {
-    std::string code = "11+2*33-44/2";
+    std::string code = "11+2*33-44/2;";
     EXPECT_EQ(run_code(code.data()), 55);
 }

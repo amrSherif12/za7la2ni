@@ -10,7 +10,8 @@
 Map *create_map(size_t capacity, size_t type_size) {
     Map *map = xmalloc(sizeof(Map));
     map->capacity = capacity;
-    map->entry_size = sizeof(char *) + type_size + sizeof(bool);
+    size_t unaligned_size = sizeof(char *) + type_size + sizeof(bool) + sizeof(uint8_t);
+    map->entry_size = (unaligned_size + 7) & ~7;
     map->type_size = type_size;
     map->entries = xcalloc(capacity, map->entry_size);
 
@@ -18,52 +19,64 @@ Map *create_map(size_t capacity, size_t type_size) {
 }
 
 void free_map(Map *map) {
-    free(map->entries);
-    free(map);
+    if (map && map->entries) free(map->entries);
+    if (map) free(map);
 }
 
-static size_t fnv1a(const char *key, size_t capacity) {
+static size_t fnv1a(const char *key, uint8_t key_len, size_t capacity) {
     uint32_t hash = 2166136261u;
-    while (*key) {
-        hash ^= (uint8_t) *key;
+    for (uint8_t i = 0; i < key_len; i++) {
+        hash ^= (uint8_t) key[i];
         hash *= 16777619u;
-        key++;
     }
     return hash % capacity;
 }
 
-
-void hash(Map *map, const char *key, void *value) {
-    size_t idx = fnv1a(key, map->capacity);
-    char *entry = map->entries + idx * map->entry_size;
-    bool *ent_act = (bool *)( (char*)entry + sizeof(char *) + map->type_size );
+void map_hash(Map *map, const char *key, uint8_t key_len, void *value) {
+    size_t idx = fnv1a(key, key_len, map->capacity);
+    char *entry = (char*)map->entries + idx * map->entry_size;
+    bool *ent_act = (bool *)(entry + sizeof(char *) + map->type_size);
+    uint8_t *key_len_ptr = (uint8_t *)(entry + sizeof(char *) + map->type_size + sizeof(bool));
     int cnt = 0;
 
     while (*ent_act && cnt <= map->capacity) {
-        if (key == *(char**)entry) break;
-        if (++idx >= map->capacity) idx = 0;
+        if (key == *(char**)entry || (*key_len_ptr == key_len && strncmp(key, *(char**)entry, key_len) == 0)) {
+            break;
+        }
 
-        entry = map->entries + idx * map->entry_size;
-        ent_act = (bool *)( (char*)entry + sizeof(char *) + map->type_size );
+        if (++idx >= map->capacity) idx = 0;
         cnt++;
+
+        entry = (char*)map->entries + idx * map->entry_size;
+        ent_act = (bool *)(entry + sizeof(char *) + map->type_size);
+        key_len_ptr = (uint8_t *)(entry + sizeof(char *) + map->type_size + sizeof(bool));
     }
 
     *(char**)entry = (char*)key;
-
+    *key_len_ptr = key_len;
     *ent_act = true;
     memcpy(entry + sizeof(char *), value, map->type_size);
 }
 
-void *find(Map *map, const char *key) {
-    size_t idx = fnv1a(key, map->capacity);
-    char *entry = map->entries + idx * map->entry_size;
-    bool *ent_act = (bool *)( (char*)entry + sizeof(char *) + map->type_size );
-    if (!*ent_act) return NULL;
+void *map_find(Map *map, const char *key, uint8_t key_len) {
+    size_t idx = fnv1a(key, key_len, map->capacity);
+    char *entry = (char*)map->entries + idx * map->entry_size;
+    bool *ent_act = (bool *)(entry + sizeof(char *) + map->type_size);
+    uint8_t *key_len_ptr = (uint8_t *)(entry + sizeof(char *) + map->type_size + sizeof(bool));
+    int cnt = 0;
 
-    while (key != *(char**)entry) {
+    while (*ent_act && cnt <= map->capacity) {
+        if (key == *(char**)entry || (*key_len_ptr == key_len && strncmp(key, *(char**)entry, key_len) == 0)) {
+            return entry + sizeof(char*);
+        }
+
         if (++idx >= map->capacity) idx = 0;
-        entry = map->entries + idx * map->entry_size;
+        cnt++;
+
+        entry = (char*)map->entries + idx * map->entry_size;
+        ent_act = (bool *)(entry + sizeof(char *) + map->type_size);
+        key_len_ptr = (uint8_t *)(entry + sizeof(char *) + map->type_size + sizeof(bool));
     }
 
-    return entry + sizeof(char*);
+    return NULL;
 }

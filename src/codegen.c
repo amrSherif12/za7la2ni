@@ -22,12 +22,12 @@ void free_reg(int i) {
     reg_in_use[i] = false;
 }
 
-int gen_code(Node *first_node, int idx, FILE *file) {
+int gen_code(Node *first_node, size_t idx, FILE *file) {
+    if (idx == -1) return -1;
     Node *node = first_node + idx;
-
-    if (node->type == NUM_ND) {
+    if (node->type == ND_LIT) {
         int reg = alloc_reg();
-        fprintf(file, "mov %s, %d\n", registers[reg], node->value);
+        fprintf(file, "mov %s, %ld\n", registers[reg], node->data.lit.val);
         return reg;
     }
 
@@ -35,27 +35,27 @@ int gen_code(Node *first_node, int idx, FILE *file) {
     int right_reg = gen_code(first_node, node->right, file);
 
     switch (node->type) {
-        case ADD_ND:
+        case ND_ADD:
             fprintf(file, "add %s, %s\n", registers[left_reg], registers[right_reg]);
             break;
-        case SUB_ND:
+        case ND_SUB:
             fprintf(file, "sub %s, %s\n", registers[left_reg], registers[right_reg]);
             break;
-        case MUL_ND:
+        case ND_MUL:
             fprintf(file, "imul %s, %s\n", registers[left_reg], registers[right_reg]);
             break;
-        case DIV_ND:
+        case ND_DIV:
             fprintf(file, "mov rax, %s\n", registers[left_reg]);
             fprintf(file, "cqo\n");
             fprintf(file, "idiv %s\n", registers[right_reg]);
             fprintf(file, "mov %s, rax\n", registers[left_reg]);
             break;
     }
-    free_reg(right_reg);
+    if (right_reg != -1) free_reg(right_reg);
     return left_reg;
 }
 
-void generate_assembly(AST ast, const char *out_path) {
+void generate_assembly(AST ast, const char *out_path, CompilerCtx *ctx) {
     FILE *out_file = fopen(out_path, "w");
     if (out_file == NULL) printf("Error: Can't open output file.");
 
@@ -69,4 +69,5 @@ void generate_assembly(AST ast, const char *out_path) {
     fprintf(out_file,"ret\n");
 
     fclose(out_file);
+    free_ctx(ctx);
 }

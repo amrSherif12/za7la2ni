@@ -16,6 +16,6 @@ String *create_str();
 
 void free_str(String *str);
 
-void push_back(String *str, char c);
+void str_push_back(String *str, char c);
 
 #endif //STRING_H
